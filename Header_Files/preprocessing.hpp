@@ -1,8 +1,7 @@
 #include <iostream>
-#include <string>
 #include <fstream>
-#include <vector>
 #include <unordered_map>
+#include <vector>
 #include "json.hpp"
 
 // ...existing code...
@@ -16,45 +15,44 @@ using json = nlohmann::json;
 unordered_map<string, json> create_hashtable_title();
 unordered_map<int, vector<string>> create_hashtable_duration();
 
+vector<string> hashtovector(unordered_map<string, json> & song_title);
+vector<int> hashtovector_int(unordered_map<int, vector<string>> & duration_titles);
+
 template <typename T>
-struct Node {
+struct TreeNode {
     T data;
-    Node<T>* left;
-    Node<T>* right;
+    TreeNode<T>* left;
+    TreeNode<T>* right;
     int height;
-    Node(T data) {
+    TreeNode(T data) {
         this->data = data;
         left = right = nullptr;
         height = 1;
     }
 };
 
-void inorderdurdes(Node<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2);
-void inorderdur(Node<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2);
+void inorderdurdes(TreeNode<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2);
+void inorderdurasc(TreeNode<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2);
 
 template <typename A>
 class AVL {
 public:
-    Node<A> * root;
+    TreeNode<A> * root;
     AVL();
-    int BalanceFactor(Node<A>* temp);
-    int UpdateHeight(Node<A>* temp);
-    Node<A>* llrotate(Node<A>* var);
-    Node<A>* lrrotate(Node<A>* var);
-    Node<A>* rrrotate(Node<A>* var);
-    Node<A>* rlrotate(Node<A>* var);
-    Node<A>* addnode(Node<A>* temp, A var);
+    int BalanceFactor(TreeNode<A>* temp);
+    int UpdateHeight(TreeNode<A>* temp);
+    TreeNode<A>* llrotate(TreeNode<A>* var);
+    TreeNode<A>* lrrotate(TreeNode<A>* var);
+    TreeNode<A>* rrrotate(TreeNode<A>* var);
+    TreeNode<A>* rlrotate(TreeNode<A>* var);
+    TreeNode<A>* addnode(TreeNode<A>* temp, A var);
     void createtree(const vector<A>& v, int size) ;
-    void inorder(Node<A>* node);
-    void displayinorder();
-    void inorderdescend(Node<A>* node);
-    void displayinorderdescend() ;
+    void inorder(TreeNode<A>* node,vector<string> & arr);
+    void displayinorder(vector<string> & arr);
+    void inorderdescend(TreeNode<A>* node,vector<string> & arr);
+    void displayinorderdescend(vector<string> & arr) ;
 };
 
-class hashtable{
-private:
-    
-};
 #endif // PREPROCESSING_HPP
 
 //put all function definitions related to preprocessing here
@@ -139,13 +137,29 @@ unordered_map<int,vector<string>> create_hashtable_duration() {
     return durationhash;
 }
 
+vector<int> hashtovector_int(unordered_map<int, vector<string>> & duration_table){
+    vector<int> durations;
+    for (const auto& pair : duration_table) {
+        durations.push_back(pair.first);
+    }
+    return durations;
+}
+
+vector<string> hashtovector(unordered_map<string, json> &song_table){
+    vector<string> titles;
+    for (const auto& pair : song_table) {
+        titles.push_back(pair.first);
+    }
+    return titles;
+}
+
 template <typename A>
 AVL<A>::AVL() {
     root = nullptr;
 }
 
 template <typename A>
-int AVL<A>::BalanceFactor(Node<A>* temp) {
+int AVL<A>::BalanceFactor(TreeNode<A>* temp) {
     if (!temp) return 0;
     int lh = (temp->left) ? temp->left->height : 0;
     int rh = (temp->right) ? temp->right->height : 0;
@@ -153,7 +167,7 @@ int AVL<A>::BalanceFactor(Node<A>* temp) {
 }
 
 template <typename A>
-int AVL<A>::UpdateHeight(Node<A>* temp) {
+int AVL<A>::UpdateHeight(TreeNode<A>* temp) {
     if (temp == nullptr) return 0;
     int lh = (temp->left) ? temp->left->height : 0;
     int rh = (temp->right) ? temp->right->height : 0;
@@ -162,9 +176,9 @@ int AVL<A>::UpdateHeight(Node<A>* temp) {
 }
 
 template <typename A>
-Node<A>* AVL<A>::llrotate(Node<A>* var) {
-    Node<A>* child = var->left;
-    Node<A>* childRight = child->right;
+TreeNode<A>* AVL<A>::llrotate(TreeNode<A>* var) {
+    TreeNode<A>* child = var->left;
+    TreeNode<A>* childRight = child->right;
     child->right = var;
     var->left = childRight;
 
@@ -174,15 +188,15 @@ Node<A>* AVL<A>::llrotate(Node<A>* var) {
 }
 
 template <typename A>
-Node<A>* AVL<A>::lrrotate(Node<A>* var) {
+TreeNode<A>* AVL<A>::lrrotate(TreeNode<A>* var) {
     var->left = rrrotate(var->left);
     return llrotate(var);
 }
 
 template <typename A>
-Node<A>* AVL<A>::rrrotate(Node<A>* var) {
-    Node<A>* child = var->right;
-    Node<A>* childLeft = child->left;
+TreeNode<A>* AVL<A>::rrrotate(TreeNode<A>* var) {
+    TreeNode<A>* child = var->right;
+    TreeNode<A>* childLeft = child->left;
     child->left = var;
     var->right = childLeft;
 
@@ -192,15 +206,15 @@ Node<A>* AVL<A>::rrrotate(Node<A>* var) {
 }
 
 template <typename A>
-Node<A>* AVL<A>::rlrotate(Node<A>* var) {
+TreeNode<A>* AVL<A>::rlrotate(TreeNode<A>* var) {
     var->right = llrotate(var->right);
     return rrrotate(var);
 }
 
 template <typename A>
-Node<A>* AVL<A>::addnode(Node<A>* temp, A var) {
+TreeNode<A>* AVL<A>::addnode(TreeNode<A>* temp, A var) {
     if (temp == nullptr)
-        return new Node<A>(var);
+        return new TreeNode<A>(var);
 
     if (var < temp->data)
         temp->left = addnode(temp->left, var);
@@ -231,41 +245,42 @@ void AVL<A>::createtree(const vector<A>& v, int size) {
 
 // ASCENDING TITLE
 template <typename A>
-void AVL<A>::inorder(Node<A>* node) {
+void AVL<A>::inorder(TreeNode<A>* node,vector<string> & arr) {
     if (!node) return;
-    inorder(node->left);
-    cout << node->data << " ";
-    inorder(node->right);
+    inorder(node->left,arr);
+    arr.push_back(node->data);
+    inorder(node->right,arr);
+    
 }
 
 template <typename A>
-void AVL<A>::displayinorder() {
-    inorder(root);
+void AVL<A>::displayinorder(vector<string> & arr) {
+    inorder(root,arr);
 }
 
 //DESCENDING TITLE
 template <typename A>
-void AVL<A>::inorderdescend(Node<A>* node) {
+void AVL<A>::inorderdescend(TreeNode<A>* node,vector<string> & arr) {
     if (!node) return;
-    inorderdescend(node->right);
-    cout << node->data << " ";
-    inorderdescend(node->left);
+    inorderdescend(node->right,arr);
+    arr.push_back(node->data);
+    inorderdescend(node->left,arr);
 }
 
 template <typename A>
-void AVL<A>::displayinorderdescend() {
-    inorderdescend(root);
+void AVL<A>::displayinorderdescend(vector<string> & arr) {
+    inorderdescend(root,arr);
 }
 
-void inorderdur(Node<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2){ 
+void inorderdurasc(TreeNode<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2){ 
     if (!temp) return;
-    inorderdur(temp->left, arr, arr2);
+    inorderdurasc(temp->left, arr, arr2);
     for (string i: arr[temp->data])
         arr2.push_back(i);
-    inorderdur(temp->right, arr, arr2);
+    inorderdurasc(temp->right, arr, arr2);
 }
 
-void inorderdurdes(Node<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2){ 
+void inorderdurdes(TreeNode<int>* temp, unordered_map<int, vector<string>> &arr, vector<string> &arr2){ 
     if (!temp) return;
     inorderdurdes(temp->right, arr, arr2);
     for (string i: arr[temp->data])

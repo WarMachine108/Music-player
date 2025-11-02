@@ -2,7 +2,6 @@
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
-#include <string>
 #include <iomanip>
 
 using json = nlohmann::json;
@@ -57,7 +56,7 @@ int downloadSong()
         return 1;
     }
     else{
-        cout<<"Downloaded Successfully ✅";
+        cout<<"Downloaded Successfully ";
     }
 
     ifstream tempFile("Info_files/temp.json");
