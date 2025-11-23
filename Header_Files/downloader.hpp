@@ -9,7 +9,7 @@ using namespace std;
 
 #ifndef DOWNLOADER_HPP
 #define DOWNLOADER_HPP
-    int downloadSong();
+int downloadSong();
     //further declarations if needed
 
 #endif // DOWNLOADER_HPP
@@ -38,12 +38,17 @@ int downloadSong()
     catch(...){
 
     }
+    
     string videoUrl="https://www.youtube.com/watch?v=" + firstLine;
     string commandtojson = "yt-dlp \"" + videoUrl +
                            "\" --print \"{\\\"title\\\": \\\"%(title)s\\\", "
                            "\\\"uploader\\\": \\\"%(uploader)s\\\", "
                            "\\\"duration\\\": \\\"%(duration)s\\\"}\" > Info_files/temp.json" + errorHandler;
-    string commandtodownload = "yt-dlp -x -q --write-thumbnail --audio-quality 0 --audio-format mp3 -o \"audioloc/%(title)s.%(ext)s\" \"" + videoUrl + "\"" + errorHandler;
+    
+    string audioPath = "audioloc/" + firstLine + ".mp3";
+    string thumbPath = "album_art/" + firstLine + ".webp";
+    string commandtodownload = "yt-dlp -x -q --write-thumbnail --audio-quality 0 --audio-format mp3 "
+        "-o \"audioloc/%(id)s.%(ext)s\" \"" + videoUrl + "\"" + errorHandler;
 
     cout << "Running command..." << endl;
     int result1 = system(commandtojson.c_str());
@@ -68,6 +73,7 @@ int downloadSong()
     json newEntry;
     tempFile >> newEntry;
     tempFile.close();
+    newEntry["id"] = firstLine; 
 
     json allData;
     ifstream infoFile("Info_files/info.json");
@@ -94,7 +100,5 @@ int downloadSong()
     ofstream jsonOutFile("Info_files/info.json");
     jsonOutFile << setw(4) << allData << endl;
     jsonOutFile.close();
-
-    cout << endl << "Commands run successfully and JSON appended!" << endl;
     return 0;
 }

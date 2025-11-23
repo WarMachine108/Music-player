@@ -46,6 +46,7 @@ public:
     TreeNode<A>* rrrotate(TreeNode<A>* var);
     TreeNode<A>* rlrotate(TreeNode<A>* var);
     TreeNode<A>* addnode(TreeNode<A>* temp, A var);
+    TreeNode<A>* deleteSong(TreeNode<A>* temp, A var); 
     void createtree(const vector<A>& v, int size) ;
     void inorder(TreeNode<A>* node,vector<string> & arr);
     void displayinorder(vector<string> & arr);
@@ -68,11 +69,15 @@ unordered_map<string,json> create_hashtable_title() {
 
     json data;
     try {
-        // read file into json (works for a top-level array or object)
-        info >> data;
+        if (info.peek() == ifstream::traits_type::eof()) {
+            cerr << "info.json is empty. Initializing with an empty array.\n";
+            data = json::array();
+        } else {
+            info >> data;
+        }
     } catch (json::parse_error& e) {
         cerr << "Error parsing info.json: " << e.what() << endl;
-        return songhash;
+        data = json::array(); // fallback to empty
     }
 
     // Accept either: top-level array OR object with "songs": [...]
@@ -91,7 +96,7 @@ unordered_map<string,json> create_hashtable_title() {
             cerr << "Skipping entry without a title." << endl;
             continue;
         }
-        string key = song.at("title").get<string>();
+        string key = song.at("id").get<string>();
         songhash[key] = song;
     }
     return songhash;
@@ -109,11 +114,15 @@ unordered_map<int,vector<string>> create_hashtable_duration() {
 
     json data;
     try {
-        // read file into json (works for a top-level array or object)
-        info >> data;
+        if (info.peek() == ifstream::traits_type::eof()) {
+            cerr << "info.json is empty. Initializing with an empty array.\n";
+            data = json::array();
+        } else {
+            info >> data;
+        }
     } catch (json::parse_error& e) {
         cerr << "Error parsing info.json: " << e.what() << endl;
-        return durationhash;
+        data = json::array(); // fallback to empty
     }
 
     // Accept either: top-level array OR object with "songs": [...]
@@ -132,7 +141,7 @@ unordered_map<int,vector<string>> create_hashtable_duration() {
             continue;
         }
         int key = stoi(song.at("duration").get<string>());
-        durationhash[key].push_back(song.at("title").get<string>());
+        durationhash[key].push_back(song.at("id").get<string>());
     }
     return durationhash;
 }
@@ -231,6 +240,49 @@ TreeNode<A>* AVL<A>::addnode(TreeNode<A>* temp, A var) {
     if (balance < -1 && var >= temp->right->data)
         return rrrotate(temp);
     if (balance < -1 && var < temp->right->data)
+        return rlrotate(temp);
+
+    return temp;
+}
+
+template <typename A>
+TreeNode<A>* AVL<A>::deleteSong(TreeNode<A>* temp, A key) {
+    if (temp == nullptr)
+        return nullptr;
+
+    if (key < temp->data)
+        temp->left = deleteSong(temp->left, key);
+    else if (key > temp->data)
+        temp->right = deleteSong(temp->right, key);
+    else {
+        if (temp->left == nullptr || temp->right == nullptr) {
+            TreeNode<A>* child = temp->left ? temp->left : temp->right;
+            delete temp;
+            return child;
+        } else {
+            TreeNode<A>* successor = temp->right;
+            while (successor->left != nullptr)
+                successor = successor->left;
+
+            temp->data = successor->data;
+            temp->right = deleteSong(temp->right, successor->data);
+        }
+    }
+
+    temp->height = 1 + max(
+        (temp->left ? temp->left->height : 0),
+        (temp->right ? temp->right->height : 0)
+    );
+
+    int balance = BalanceFactor(temp);
+
+    if (balance > 1 && key < temp->left->data)
+        return llrotate(temp);
+    if (balance > 1 && key > temp->left->data)
+        return lrrotate(temp);
+    if (balance < -1 && key > temp->right->data)
+        return rrrotate(temp);
+    if (balance < -1 && key < temp->right->data)
         return rlrotate(temp);
 
     return temp;
