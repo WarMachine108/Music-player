@@ -20,24 +20,28 @@ Music Player is a lightweight, command-line music player application designed fo
 - **Audio Library**: BASS (bass.dll included)
 
 ## Project Structure
-Music-player/ 
-  ├── Header_Files/ # Header files for the project
-      ├── ytdl/ # YouTube downloader module 
-      ├── bass.h # BASS library header
-      ├── bass.lib # BASS library object file
-      ├── bassplayer.hpp # Bass player C++ header
-      ├── downloader.hpp # Downloader utility C++ header
-      ├── json.hpp # JSON parsing C++ header
-      ├── maker.hpp # Maker utility C++ header
-      └── preprocessing.hpp # Preprocessing C++ header (10 KB
-  ├── Info_files/ # Information and documentation files
-      ├── info.json # Stores info about all songs 
-      ├── temp.json # Temproary json file for info of latest song
-  ├── audioloc/ # Audio location/management module 
-  ├── main.cpp # Main application entry point 
-  ├── bass.dll # BASS audio library for Windows 
-  ├── buffer.txt # Buffer file for processing 
-  └── .gitignore # Git ignore rules
+Music-player/
+│
+├── Header_Files/               # Header files for the project
+│   ├── ytdl/                   # YouTube downloader module
+│   ├── bass.h                  # BASS library header
+│   ├── bass.lib                # BASS library object file
+│   ├── bassplayer.hpp          # Audio playback logic
+│   ├── downloader.hpp          # Downloader utility
+│   ├── json.hpp                # JSON parsing
+│   ├── maker.hpp               # Utility functions
+│   └── preprocessing.hpp       # Preprocessing module
+│
+├── Info_files/                 # Information & metadata
+│   ├── info.json               # Stores all songs info
+│   └── temp.json               # Temporary latest song data
+│
+├── audioloc/                  # Audio file management
+│
+├── main.cpp                   # Entry point of application
+├── bass.dll                   # BASS audio library (Windows)
+├── buffer.txt                 # Buffer file for processing
+└── .gitignore                 # Git ignore rules
 
 
 ## Getting Started
