@@ -62,6 +62,7 @@ Music-player/
 
 - C++ compiler (C++11 or later)
 - BASS library (included for Windows)
+- YT-DLP Module for Windows 
 
 ---
 
