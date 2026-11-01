@@ -1,208 +1,125 @@
-#include <iostream>
-#include <fstream>
+#pragma once
+#include <algorithm>
 #include <unordered_map>
-#include <queue> 
+#include <unordered_set>
+#include <utility>
 #include <vector>
-#include "json.hpp"
-#include"preprocessing.hpp"
-using namespace std;
+#include "storage.hpp"
+#include "preprocessing.hpp"
 
-#ifndef MAKER_HPP
-#define MAKER_HPP
-
-struct ListNode{
-    string data;
-    ListNode*next;
-    ListNode*prev;
-    ListNode(string data);
+struct ListNode {
+    std::string data;
+    ListNode* next = nullptr;
+    ListNode* prev = nullptr;
+    explicit ListNode(std::string id) : data(std::move(id)) {}
 };
 
-class Maker{
-private:
-    vector <string> titles;
-    vector <string> recent_add; 
-    AVL<string> title;
+// Hash tables: lookup. AVL trees: sorted indexes. Doubly linked list: playback.
+class Maker {
+    using TitleKey = std::pair<std::string, std::string>;
+    AVL<TitleKey> title;
     AVL<int> duration;
-    ListNode *head;
+    std::vector<std::string> recent_add;
+    ListNode* head = nullptr;
+    json original = json::array();
+    std::string sort_ = "Title";
+    bool ascending_ = true;
+    void clearList() { while (head) { auto* next = head->next; delete head; head = next; } }
+    void index(const Song& s) {
+        song_table.emplace(s.id, s); title.insert({folded(s.title), s.id});
+        if (!duration_table.count(s.duration)) duration.insert(s.duration);
+        duration_table[s.duration].push_back(s.id); recent_add.push_back(s.id);
+    }
 public:
-    unordered_map<int, vector<string>> duration_table;
-    unordered_map<string, json> song_table;
-    unordered_map<string, string> title_to_id;
-    Maker();
-    void createDLL(vector<string> & arr);
-    void deleteDoublyLinkedList(ListNode*& head);
-    void deleteSong(const string& temp);
-    ListNode*createAscendingList();
-    ListNode*createDescendingList();
-    ListNode*createDescendingList_Dur();
-    ListNode*createAscendingList_Dur();
-    ListNode*createAscendingList_rec();  
-    ListNode*createDescendingList_rec();
-};
-
-#endif
-
-ListNode::ListNode(string data){
-    this->data=data;
-    next=nullptr;
-    prev=nullptr;
-}
-
-
-Maker::Maker(){ 
-    head=nullptr;
-    song_table=create_hashtable_title();
-    duration_table=create_hashtable_duration(); 
-    for (const auto& pair : song_table) {
-        const string& id = pair.first;
-        const json& song = pair.second;
-
-        if (song.contains("title")) {
-            string title_name = song["title"].get<string>();
-            title_to_id[title_name] = id;
-            titles.push_back(title_name);
+    fs::path root;
+    std::unordered_map<std::string, Song> song_table;
+    std::unordered_map<int, std::vector<std::string>> duration_table;
+    std::vector<std::string> warnings;
+    bool readOnly = false;
+    explicit Maker(fs::path directory) : root(std::move(directory)) { reload(); }
+    ~Maker() { clearList(); }
+    Maker(const Maker&) = delete;
+    Maker& operator=(const Maker&) = delete;
+    void reload() {
+        auto data = readMetadata(root / "Info_files/info.json");
+        std::vector<Song> parsed;
+        std::unordered_set<std::string> seen;
+        std::vector<std::string> notes;
+        bool invalid = false;
+        for (std::size_t i = 0; i < data.size(); ++i) {
+            try {
+                auto s = Song::parse(data[i]);
+                if (!seen.insert(s.id).second) { notes.push_back("Duplicate ID ignored: " + s.id); continue; }
+                parsed.push_back(std::move(s));
+            } catch (const std::exception& e) { notes.push_back("Entry " + std::to_string(i + 1) + ": " + e.what()); invalid = true; }
         }
+        clearList(); title.clear(); duration.clear(); song_table.clear(); duration_table.clear(); recent_add.clear();
+        original = data; readOnly = invalid; warnings = std::move(notes);
+        for (const auto& s : parsed) index(s);
+        rebuild(sort_, ascending_);
     }
-    ifstream infofile("Info_files/info.json");
-    if (infofile){ 
-        json data; 
-        infofile >> data; 
-        for (auto& entry: data){ 
-            if (entry.contains("id")){ 
-                recent_add.push_back(entry["id"].get<string>());
+    std::vector<std::string> orderedIds() const {
+        std::vector<std::string> ids;
+        for (auto* n = head; n; n = n->next) ids.push_back(n->data);
+        return ids;
+    }
+    ListNode* find(const std::string& id) const {
+        for (auto* n = head; n; n = n->next) if (n->data == id) return n;
+        return nullptr;
+    }
+    void rebuild(const std::string& sort, bool asc) {
+        sort_ = sort; ascending_ = asc;
+        std::vector<std::string> ids;
+        if (sort == "Title") {
+            std::vector<TitleKey> keys; title.displayinorder(keys);
+            for (const auto& k : keys) ids.push_back(k.second);
+        } else if (sort == "Duration") {
+            std::vector<int> keys; duration.displayinorder(keys);
+            for (int k : keys) {
+                auto group = duration_table.at(k);
+                std::sort(group.begin(), group.end(), [&](const auto& a, const auto& b) {
+                    return TitleKey{folded(song_table.at(a).title), a} < TitleKey{folded(song_table.at(b).title), b};
+                });
+                ids.insert(ids.end(), group.begin(), group.end());
             }
+        } else ids = recent_add;
+        if (!asc) std::reverse(ids.begin(), ids.end());
+        clearList(); ListNode* tail = nullptr;
+        for (const auto& id : ids) {
+            auto* n = new ListNode(id); n->prev = tail;
+            if (tail) tail->next = n; else head = n;
+            tail = n;
         }
     }
-    title.createtree(titles,titles.size());
-    vector<int> dur=hashtovector_int(duration_table);
-    duration.createtree(dur,dur.size());
-    titles.clear();
-}
-void Maker::createDLL(vector<string> & arr){
-    head = nullptr;
-    ListNode* temp = nullptr;
-    ListNode* previous = nullptr;
-    for(string s:arr){
-        ListNode*newnode=new ListNode(s);
-        if(!head){
-            head=newnode;
-            temp=head;
-            previous=head;
-            continue;
+    void addSong(const Song& s) {
+        if (readOnly) throw std::runtime_error("Repair invalid metadata entries before editing.");
+        if (song_table.count(s.id)) throw std::runtime_error("Song already in library.");
+        auto updated = original; updated.push_back(s.record);
+        writeMetadata(root / "Info_files/info.json", original, updated);
+        original = std::move(updated); index(s); rebuild(sort_, ascending_);
+    }
+    std::string deleteSong(const std::string& id) {
+        if (readOnly) throw std::runtime_error("Repair invalid metadata entries before editing.");
+        const auto s = song_table.at(id);
+        json updated = json::array();
+        for (const auto& record : original) if (record.at("id") != id) updated.push_back(record);
+        // A failed metadata commit leaves indexes and media untouched.
+        writeMetadata(root / "Info_files/info.json", original, updated); original = std::move(updated);
+        title.erase({folded(s.title), id});
+        auto& group = duration_table.at(s.duration);
+        group.erase(std::remove(group.begin(), group.end(), id), group.end());
+        if (group.empty()) { duration_table.erase(s.duration); duration.erase(s.duration); }
+        recent_add.erase(std::remove(recent_add.begin(), recent_add.end(), id), recent_add.end()); song_table.erase(id);
+        if (auto* n = find(id)) {
+            if (n->prev) n->prev->next = n->next; else head = n->next;
+            if (n->next) n->next->prev = n->prev;
+            delete n;
         }
-        temp->next = newnode;
-        newnode->prev = temp;
-        temp = newnode;
+        std::string warning;
+        for (const auto* ext : {".mp3", ".webp", ".jpg", ".png"}) {
+            std::error_code error; fs::remove(root / "audioloc" / (id + ext), error);
+            if (error) warning = "Removed from library; a media file could not be removed (it may be open elsewhere).";
+        }
+        return warning;
     }
-}
-void Maker::deleteDoublyLinkedList(ListNode*& head) {
-    ListNode* current = head;
-    while (current != nullptr) {
-        ListNode* nextNode = current->next;
-        delete current;
-        current = nextNode;
-    }
-    head = nullptr;
-}
-
-void Maker::deleteSong(const string& temp){ 
-    if (title_to_id.find(temp) == title_to_id.end()){ 
-        cout << "Song not found." << endl; 
-        return;
-    }
-    string id = title_to_id[temp];
-    json song = song_table[id];
-    int dur = stoi(song["duration"].get<string>());
-
-    title.root = title.deleteSong(title.root, temp);
-    auto& ids = duration_table[dur];
-    ids.erase(remove(ids.begin(), ids.end(), id), ids.end());
-    if (ids.empty()) {
-        duration_table.erase(dur);
-        duration.root = duration.deleteSong(duration.root, dur);
-    }
-
-    title_to_id.erase(temp);
-    song_table.erase(id);
-    string songpath = "audioloc/" + id + ".mp3";
-    string imagePath = "audioloc/" + id + ".webp";
-    remove(songpath.c_str());
-    remove(imagePath.c_str());
-
-    ifstream in("Info_files/info.json");
-    if (!in.is_open()) {
-        cerr << "Could not open info.json for updating.\n";
-        return;
-    }
-    json allSongs;
-    in >> allSongs;
-    in.close();
-    json updated = json::array();
-    for (auto& s : allSongs) {
-        if (s["id"].get<string>() != id)
-            updated.push_back(s);
-    }
-    ofstream out("Info_files/info.json");
-    out << setw(4) << updated << endl;
-    out.close();
-    cout << "Successfully deleted: " << temp << endl;
-}
-
-ListNode* Maker::createAscendingList(){
-    titles.clear();
-    deleteDoublyLinkedList(head);
-
-    vector<string> sorted_titles;
-    title.displayinorder(sorted_titles);
-
-    vector<string> sorted_ids;
-    for (const string& t : sorted_titles) {
-        if (title_to_id.count(t))
-            sorted_ids.push_back(title_to_id[t]);
-    }
-
-    createDLL(sorted_ids);
-    return head;
-}
-ListNode* Maker::createDescendingList(){
-    titles.clear();
-    deleteDoublyLinkedList(head);
-
-    vector<string> sorted_titles;
-    title.displayinorderdescend(sorted_titles);
-
-    vector<string> sorted_ids;
-    for (const string& t : sorted_titles) {
-        if (title_to_id.count(t))
-            sorted_ids.push_back(title_to_id[t]);
-    }
-
-    createDLL(sorted_ids);
-    return head;
-}
-ListNode* Maker::createDescendingList_Dur(){
-    titles.clear();
-    deleteDoublyLinkedList(head);
-    inorderdurdes(duration.root,duration_table,titles);
-    createDLL(titles);
-    return head;
-}
-ListNode* Maker::createAscendingList_Dur(){
-    titles.clear();
-    deleteDoublyLinkedList(head);
-    inorderdurasc(duration.root,duration_table,titles);
-    createDLL(titles);
-    return head;
-}
-ListNode* Maker::createAscendingList_rec(){ 
-    deleteDoublyLinkedList(head);
-    createDLL(recent_add);
-    return head;
-}
-ListNode* Maker::createDescendingList_rec() {
-    deleteDoublyLinkedList(head);
-    vector<string> reversed = recent_add;
-    reverse(reversed.begin(), reversed.end());
-    createDLL(reversed);
-    return head;
-}
+};

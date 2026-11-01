@@ -1,12 +1,21 @@
+# Generated build and download staging
+/build/
+/.downloads/
+
+# Personal music library (created locally by the application)
+/audioloc/
+/Info_files/info.json
+
+# Local editor settings
+/.vscode/
+
+# Downloaded runtime tools
+/Header_Files/ytdl/*.exe
+/Header_Files/ytdl/yt-dlp
+
+# Metadata backups, temporary saves, and lock
+/Info_files/*.bak
+/Info_files/*.new
+/Info_files/.library.lock
+
 .DS_Store
-Header_Files/ytdl/ffmpeg.exe
-Header_Files/ytdl/ffplay.exe
-Header_Files/ytdl/ffprobe.exe
-.gitignore
-Header_Files/ytdl/yt-dlp.exe
-Header_Files/ytdl/yt-dlp
-main.exe
-.vscode/c_cpp_properties.json
-.vscode/settings.json
-AVL.exe
-player.exe
